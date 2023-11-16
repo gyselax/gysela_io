@@ -5,15 +5,16 @@
 ### modules ###
 import numpy as np
 import matplotlib.pyplot as plt
+import h5py
 
 ########### TEMPORARY: will be changed to use YAML file ######
 ### The grid ###
-Ntor1 = 16       # number of cells in the radial direction
-Ntor2 = 16       # number of cells in the poloidal direction
-Ntor3 = 16       # number of cells in the toroidal direction
+Ntor1 = 16      # number of cells in the radial direction
+Ntor2 = 16      # number of cells in the poloidal direction
+Ntor3 = 16      # number of cells in the toroidal direction
 Nvpar = 128     # number of cells in the parallel velocity direction
 Nmu   = 64      # number of cells in the adiabatic invariant direction
-
+Nspecies = 1    # number of species
 
 tor1_min = 0.0
 tor1_max = 1.0
@@ -32,25 +33,21 @@ grid_vpar = np.linspace( -vpar_max, vpar_max, Nvpar )
 grid_mu   = np.linspace( 0.0, mu_max, Nmu )
 
 
-## Normalisation
-#R_ref = 1.0    # Major radius of reference  [m]
-#N_ref = 1e19   # Electron density in R_ref [m^-3]
-#T_ref = 1e3    # Electron temperature in R_ref [eV]
-#B_ref = 1.0    # Magnetic field on R_ref [T]
+# Save the distribution function in an hdf5 file
+hf_grid = h5py.File('GyselaX_mesh.h5', 'w')
+
+hf_grid.create_dataset('gridTor1', data=grid_tor1)
+hf_grid.create_dataset('gridTor2', data=grid_tor2)
+hf_grid.create_dataset('gridTor3', data=grid_tor3)
+hf_grid.create_dataset('gridVpar', data=grid_vpar)
+hf_grid.create_dataset('gridMu', data=grid_mu)
+
+hf_grid.close()
 
 
-# species caracteristics
-As = 1
-Zs = 1
-
-
-# Construct a Maxellian distribution function
-def Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, B_loc, vpar_loc, mu_loc):
-
-#   Compute  Energy = (0.5 * (vpar_loc - Upar_loc)**2 + mu_loc * B_loc) / T_loc in a vectorize way
-    Energy = np.add.outer(0.5 * (vpar_loc - Upar_loc)**2,  mu_loc * B_loc) / T_loc
-
-    return N_loc * (As / (2.0 * np.pi * T_loc))**1.5 * np.exp( - Energy)
+# species caracteristics (filled with dummy values now)
+As = np.ones(Nspecies)
+Zs = np.ones(Nspecies)
 
 
 # Construct the density, mean parallel velocity and temperature profiles in 1D, assuming a parabolic radial dependance:
@@ -65,22 +62,52 @@ N_vec = 1.0  - (1.0 - N_min) * grid_tor1**2
 T_vec = 1.0  - (1.0 - T_min) * grid_tor1**2
 
 
+# Save the distribution function in an hdf5 file
+hf_prof = h5py.File('GyselaX_profiles.h5', 'w')
+
+hf_prof.create_dataset('densityTorCS', data=N_vec)
+hf_prof.create_dataset('UparTorCS', data=Upar_vec)
+hf_prof.create_dataset('temperatureTorCS', data=T_vec)
+
+hf_prof.close()
+
+########### END OF TEMPORARY  ###############################
+
+# Construct a Maxellian distribution function
+def Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, B_loc, vpar_loc, mu_loc):
+
+#   Compute  Energy = (0.5 * (vpar_loc - Upar_loc)**2 + mu_loc * B_loc) / T_loc in a vectorize way
+    Energy = np.add.outer(0.5 * (vpar_loc - Upar_loc)**2,  mu_loc * B_loc) / T_loc
+
+    return N_loc * (As / (2.0 * np.pi * T_loc))**1.5 * np.exp( - Energy)
+
+
 # Construction of the 5D distribution function
-F_distribution_5D = np.zeros( (Ntor1, Ntor2, Ntor3) + (Nvpar, Nmu) )
+F_distribution_5D = np.zeros( (Ntor1, Ntor2, Ntor3) + (Nvpar, Nmu, Nspecies) )
 
-for ir in range(Ntor1):
-    N_loc    = N_vec[ir]
-    Upar_loc = Upar_vec[ir]
-    T_loc    = T_vec[ir]
+for ispecies in range(Nspecies):
+    As_loc = As[ispecies]
+    for ir in range(Ntor1):
+        N_loc    = N_vec[ir]
+        Upar_loc = Upar_vec[ir]
+        T_loc    = T_vec[ir]
 
-    Maxwellian_loc = Maxwellian_func( As, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
+        Maxwellian_loc = Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
 
-    for itheta in range(Ntor2):
-     
-        for iphi in range(Ntor3):
+        for itheta in range(Ntor2):
+
+            for iphi in range(Ntor3):
+
+                F_distribution_5D[ir, itheta, iphi, :, :, ispecies] = Maxwellian_loc
+
+# Save the distribution function in an hdf5 file
+hf_distri = h5py.File('GyselaX_fdistribu.h5', 'w')
+
+hf_distri.create_dataset('data', data=F_distribution_5D)
+
+hf_distri.close()
 
 
-            F_distribution_5D[ir, itheta, iphi, :, :] = Maxwellian_loc
 
 
 
@@ -88,9 +115,9 @@ plotting = input("Do you want to plot the figures? [y/n] (default = n)")
 if plotting == "y":
     
     
-    # Figure 0: Distribution function on the magnetic axis
+    # Figure 0: Distribution function of first species on the magnetic axis
 
-    Maxwellian_loc[:, :] = F_distribution_5D[ 0, 0, 0, :, :]
+    Maxwellian_loc[:, :] = F_distribution_5D[ 0, 0, 0, :, :, 0]
 
     fig0 = plt.figure(0,figsize=(10, 10))
     ax0 = fig0.add_subplot(111)
