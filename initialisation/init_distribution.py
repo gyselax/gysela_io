@@ -40,7 +40,7 @@ hf_grid.create_dataset('gridTor1', data=grid_tor1)
 hf_grid.create_dataset('gridTor2', data=grid_tor2)
 hf_grid.create_dataset('gridTor3', data=grid_tor3)
 hf_grid.create_dataset('gridVpar', data=grid_vpar)
-hf_grid.create_dataset('gridMu', data=grid_mu)
+hf_grid.create_dataset('gridMu'  , data=grid_mu)
 
 hf_grid.close()
 
@@ -51,15 +51,16 @@ Zs = np.ones(Nspecies)
 
 
 # Construct the density, mean parallel velocity and temperature profiles in 1D, assuming a parabolic radial dependance:
-N_vec    = np.zeros(Ntor1)
-Upar_vec = np.zeros(Ntor1)
-T_vec    = np.zeros(Ntor1)
+N_vec    = np.zeros((Ntor1, Ntor2))
+Upar_vec = np.zeros((Ntor1, Ntor2))
+T_vec    = np.zeros((Ntor1, Ntor2))
 
 N_min = 0.5  #In normalized units, N_max=N_ref is on the axis
 T_min = 0.2  #In normalized units, T_max=T_ref is on the axis
     
-N_vec = 1.0  - (1.0 - N_min) * grid_tor1**2
-T_vec = 1.0  - (1.0 - T_min) * grid_tor1**2
+for ir in range(Ntor1):
+    N_vec[ir, :] = 1.0  - (1.0 - N_min) * grid_tor1[ir]**2
+    T_vec[ir, :] = 1.0  - (1.0 - T_min) * grid_tor1[ir]**2
 
 
 # Save the distribution function in an hdf5 file
@@ -88,13 +89,14 @@ F_distribution_5D = np.zeros( (Ntor1, Ntor2, Ntor3) + (Nvpar, Nmu, Nspecies) )
 for ispecies in range(Nspecies):
     As_loc = As[ispecies]
     for ir in range(Ntor1):
-        N_loc    = N_vec[ir]
-        Upar_loc = Upar_vec[ir]
-        T_loc    = T_vec[ir]
-
-        Maxwellian_loc = Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
-
         for itheta in range(Ntor2):
+            N_loc    = N_vec[ir, itheta]
+            Upar_loc = Upar_vec[ir, itheta]
+            T_loc    = T_vec[ir, itheta]
+
+            Maxwellian_loc = Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
+
+
 
             for iphi in range(Ntor3):
 
@@ -130,15 +132,15 @@ if plotting == "y":
     fig1 = plt.figure(1,figsize=(10, 10))
 
     ax11 = fig1.add_subplot(311)
-    ax11.plot(grid_tor1, N_vec)
+    ax11.plot(grid_tor1, N_vec[:, 0])
     ax11.set_ylabel("$N_e / N_e^{ref}$", fontsize = 20)
 
     ax12 = fig1.add_subplot(312)
-    ax12.plot(grid_tor1, Upar_vec)
+    ax12.plot(grid_tor1, Upar_vec[:,0])
     ax12.set_ylabel("$U_{\parallel, e} / v_{Te}^{ref}$", fontsize = 20)
 
     ax13 = fig1.add_subplot(313)
-    ax13.plot(grid_tor1, T_vec)
+    ax13.plot(grid_tor1, T_vec[:,0])
     ax13.set_ylabel("$T_e / T_e^{ref}$", fontsize = 20)
 
     plt.show()
