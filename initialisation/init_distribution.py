@@ -9,11 +9,11 @@ import h5py
 
 ########### TEMPORARY: will be changed to use YAML file ######
 ### The grid ###
-Ntor1 = 16      # number of cells in the radial direction
-Ntor2 = 16      # number of cells in the poloidal direction
-Ntor3 = 16      # number of cells in the toroidal direction
-Nvpar = 128     # number of cells in the parallel velocity direction
-Nmu   = 64      # number of cells in the adiabatic invariant direction
+Ntor1 = 64      # number of cells in the radial direction
+Ntor2 = 128     # number of cells in the poloidal direction
+Ntor3 = 4       # number of cells in the toroidal direction
+Nvpar = 32      # number of cells in the parallel velocity direction
+Nmu   = 16      # number of cells in the adiabatic invariant direction
 Nspecies = 1    # number of species
 
 tor1_min = 0.0
@@ -36,11 +36,11 @@ grid_mu   = np.linspace( 0.0, mu_max, Nmu )
 # Save the distribution function in an hdf5 file
 hf_grid = h5py.File('GyselaX_mesh.h5', 'w')
 
-hf_grid.create_dataset('gridTor1', data=grid_tor1)
-hf_grid.create_dataset('gridTor2', data=grid_tor2)
-hf_grid.create_dataset('gridTor3', data=grid_tor3)
-hf_grid.create_dataset('gridVpar', data=grid_vpar)
-hf_grid.create_dataset('gridMu', data=grid_mu)
+hf_grid.create_dataset('grid_tor1', data=grid_tor1)
+hf_grid.create_dataset('grid_tor2', data=grid_tor2)
+hf_grid.create_dataset('grid_tor3', data=grid_tor3)
+hf_grid.create_dataset('grid_vpar', data=grid_vpar)
+hf_grid.create_dataset('grid_mu', data=grid_mu)
 
 hf_grid.close()
 
@@ -103,7 +103,7 @@ for ispecies in range(Nspecies):
 # Save the distribution function in an hdf5 file
 hf_distri = h5py.File('GyselaX_fdistribu.h5', 'w')
 
-hf_distri.create_dataset('data', data=F_distribution_5D)
+hf_distri.create_dataset('fdistribu', data=F_distribution_5D)
 
 hf_distri.close()
 
