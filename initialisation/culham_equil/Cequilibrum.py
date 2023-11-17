@@ -171,14 +171,11 @@ def Culham_equilibrum(q, p, R0, B0, Ea, Ta, h, Nomega, Nr):
     ri = range(Ndr-1, np.size(q), Ndr)
     
     mpp.figure()
-    mpp.hold(True)
     for rj in ri:
-        mpp.plot((- E + r - P)[rj] * np.cos(omega) - Delta[rj] + T[rj] * np.cos(2*omega), (r + E - P)[rj] * np.sin(omega) - T[rj] * np.sin(2 * omega), 
+        mpp.plot( -Delta[rj] + (r - E - P)[rj] * np.cos(omega) + T[rj] * np.cos(2*omega), (r + E - P)[rj] * np.sin(omega) - T[rj] * np.sin(2 * omega), 
 'o-')
-#        print('R = ', (E - r + P)[rj] * np.cos(omega) - Delta[rj] + T[rj] * np.cos(2*omega))
-#        print('Z = ', (r + E - P)[rj] * np.sin(omega) + T[rj] * np.sin(omega))
     #end for
-    mpp.hold(False)
+
     mpp.axis("equal")
     mpp.show()
     
