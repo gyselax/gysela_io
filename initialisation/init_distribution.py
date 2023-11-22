@@ -6,6 +6,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
+import utils as ut
 
 ########### TEMPORARY: will be changed to use YAML file ######
 ### The grid ###
@@ -27,11 +28,15 @@ mu_max   = 12.0
 
 
 grid_tor1 = np.linspace( tor1_min, tor1_max, Ntor1 )
-grid_tor2 = np.linspace( tor2_min, tor2_max, Ntor2 )
-grid_tor3 = np.linspace( tor3_min, tor3_max, Ntor3 )
+grid_tor2 = np.linspace( tor2_min, tor2_max, Ntor2, endpoint = False )
+grid_tor3 = np.linspace( tor3_min, tor3_max, Ntor3, endpoint = False )
 grid_vpar = np.linspace( -vpar_max, vpar_max, Nvpar )
 grid_mu   = np.linspace( 0.0, mu_max, Nmu )
 
+#VG#grid_grev_tor1 = ut.get_greville_points(grid_tor1, periodic= False, spline_degree = 3)
+#VG#grid_grev_tor2 = ut.get_greville_points(grid_tor2, periodic= True, spline_degree = 3)
+#VG#print("grid_tor2=",grid_tor2)
+#VG#print("grid_grev_tor2=",grid_grev_tor2)
 
 # Save the distribution function in an hdf5 file
 hf_grid = h5py.File('GyselaX_mesh.h5', 'w')
@@ -96,22 +101,16 @@ for ispecies in range(Nspecies):
 
             Maxwellian_loc = Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
 
-
-
             for iphi in range(Ntor3):
 
                 F_distribution_5D[ir, itheta, iphi, :, :, ispecies] = Maxwellian_loc
 
 # Save the distribution function in an hdf5 file
-hf_distri = h5py.File('GyselaX_fdistribu.h5', 'w')
-
+time_saved = 0.
+hf_distri = h5py.File('GyselaX_fdistribu_rst00000.h5', 'w')
+hf_distri.create_dataset('time_saved', data=time_saved)
 hf_distri.create_dataset('fdistribu', data=F_distribution_5D)
-
 hf_distri.close()
-
-
-
-
 
 plotting = input("Do you want to plot the figures? [y/n] (default = n)")
 if plotting == "y":
