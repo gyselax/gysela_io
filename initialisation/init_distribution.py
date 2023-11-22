@@ -6,6 +6,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
+import utils as ut
 
 ########### TEMPORARY: will be changed to use YAML file ######
 ### The grid ###
@@ -27,11 +28,15 @@ mu_max   = 12.0
 
 
 grid_tor1 = np.linspace( tor1_min, tor1_max, Ntor1 )
-grid_tor2 = np.linspace( tor2_min, tor2_max, Ntor2 )
-grid_tor3 = np.linspace( tor3_min, tor3_max, Ntor3 )
+grid_tor2 = np.linspace( tor2_min, tor2_max, Ntor2, endpoint = False )
+grid_tor3 = np.linspace( tor3_min, tor3_max, Ntor3, endpoint = False )
 grid_vpar = np.linspace( -vpar_max, vpar_max, Nvpar )
 grid_mu   = np.linspace( 0.0, mu_max, Nmu )
 
+#VG#grid_grev_tor1 = ut.get_greville_points(grid_tor1, periodic= False, spline_degree = 3)
+#VG#grid_grev_tor2 = ut.get_greville_points(grid_tor2, periodic= True, spline_degree = 3)
+#VG#print("grid_tor2=",grid_tor2)
+#VG#print("grid_grev_tor2=",grid_grev_tor2)
 
 # Save the distribution function in an hdf5 file
 hf_grid = h5py.File('GyselaX_mesh.h5', 'w')
@@ -51,15 +56,16 @@ Zs = np.ones(Nspecies)
 
 
 # Construct the density, mean parallel velocity and temperature profiles in 1D, assuming a parabolic radial dependance:
-N_vec    = np.zeros(Ntor1)
-Upar_vec = np.zeros(Ntor1)
-T_vec    = np.zeros(Ntor1)
+N_vec    = np.zeros((Ntor1, Ntor2))
+Upar_vec = np.zeros((Ntor1, Ntor2))
+T_vec    = np.zeros((Ntor1, Ntor2))
 
 N_min = 0.5  #In normalized units, N_max=N_ref is on the axis
 T_min = 0.2  #In normalized units, T_max=T_ref is on the axis
     
-N_vec = 1.0  - (1.0 - N_min) * grid_tor1**2
-T_vec = 1.0  - (1.0 - T_min) * grid_tor1**2
+for ir in range(Ntor1):
+    N_vec[ir, :] = 1.0  - (1.0 - N_min) * grid_tor1[ir]**2
+    T_vec[ir, :] = 1.0  - (1.0 - T_min) * grid_tor1[ir]**2
 
 
 # Save the distribution function in an hdf5 file
@@ -88,28 +94,23 @@ F_distribution_5D = np.zeros( (Ntor1, Ntor2, Ntor3) + (Nvpar, Nmu, Nspecies) )
 for ispecies in range(Nspecies):
     As_loc = As[ispecies]
     for ir in range(Ntor1):
-        N_loc    = N_vec[ir]
-        Upar_loc = Upar_vec[ir]
-        T_loc    = T_vec[ir]
-
-        Maxwellian_loc = Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
-
         for itheta in range(Ntor2):
+            N_loc    = N_vec[ir, itheta]
+            Upar_loc = Upar_vec[ir, itheta]
+            T_loc    = T_vec[ir, itheta]
+
+            Maxwellian_loc = Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
 
             for iphi in range(Ntor3):
 
                 F_distribution_5D[ir, itheta, iphi, :, :, ispecies] = Maxwellian_loc
 
 # Save the distribution function in an hdf5 file
-hf_distri = h5py.File('GyselaX_fdistribu.h5', 'w')
-
+time_saved = 0.
+hf_distri = h5py.File('GyselaX_fdistribu_rst00000.h5', 'w')
+hf_distri.create_dataset('time_saved', data=time_saved)
 hf_distri.create_dataset('fdistribu', data=F_distribution_5D)
-
 hf_distri.close()
-
-
-
-
 
 plotting = input("Do you want to plot the figures? [y/n] (default = n)")
 if plotting == "y":
@@ -130,15 +131,15 @@ if plotting == "y":
     fig1 = plt.figure(1,figsize=(10, 10))
 
     ax11 = fig1.add_subplot(311)
-    ax11.plot(grid_tor1, N_vec)
+    ax11.plot(grid_tor1, N_vec[:, 0])
     ax11.set_ylabel("$N_e / N_e^{ref}$", fontsize = 20)
 
     ax12 = fig1.add_subplot(312)
-    ax12.plot(grid_tor1, Upar_vec)
+    ax12.plot(grid_tor1, Upar_vec[:,0])
     ax12.set_ylabel("$U_{\parallel, e} / v_{Te}^{ref}$", fontsize = 20)
 
     ax13 = fig1.add_subplot(313)
-    ax13.plot(grid_tor1, T_vec)
+    ax13.plot(grid_tor1, T_vec[:,0])
     ax13.set_ylabel("$T_e / T_e^{ref}$", fontsize = 20)
 
     plt.show()
