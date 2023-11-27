@@ -41,11 +41,10 @@ if __name__ == '__main__':
     parser.add_argument('-s','--select',
                         action='store',
                         nargs='?',
-                        default='tor1=0,tor2=0,tor3=0,vpar=:,mu=:,species=0',
+                        default='tor1=0,tor2=0,tor3=0,species=0',
                         type=str,
-                        help="Position of the slice to extract, by default 'tor1=0,tor2=0,tor3=0,vpar=:,mu=:,species=0'")
+                        help="Position of the slice to extract, by default 'tor1=0,tor2=0,tor3=0,species=0'")
     args = parser.parse_args()
-    print(args)
 
     input_file = args.input_file
     dataset_name = args.dataset
@@ -84,22 +83,19 @@ if __name__ == '__main__':
     str_select_OK = ''
     for i in str_select.split(','):
       if i.split('=')[0] in ds_gysela[dataset_name].coords:
-        if ':' not in i:
-          list_select_OK.append(i)
-          str_select_OK = str_select_OK+'_i'+str(i).replace('=','eq')
-        else:
-          str_select_OK = str_select_OK+'_'+str(i).replace('=:','')
+        list_select_OK.append(i)
+        str_select_OK = str_select_OK+'_i'+str(i).replace('=','eq')
 
     dict_select = {key: int(value) for key, value in (pair.split('=') for pair in list_select_OK)}
-    print(dict_select)
     ds_select = ds_gysela[dataset_name].isel(dict_select)
-    print(ds_select)
+    nb_dim_select = len(ds_select.dims)
 
-    if len(ds_select.dims)>0 :
+    print(ds_select)
+    if nb_dim_select==0 or nb_dim_select>2:
+      print('--> no plot for {}D slice is saved'.format(nb_dim_select))
+    else:
       ax = plt.axes()
       ds_select.plot()
-      figname = '{}{}.png'.format(dataset_name,str_select_OK)
+      figname = '{}_{}D{}.png'.format(dataset_name,nb_dim_select,str_select_OK)
       print('--> Figure saved in: {}'.format(figname))
       plt.savefig(figname)
-    else:
-      print(ds_select) 
