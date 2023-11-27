@@ -1,145 +1,174 @@
-###############################################################
-# This python script initialise the distribution function that
-# will be read by GYSELA
-###############################################################
-### modules ###
+# SPDX-License-Identifier: MIT
+
+"""
+Created on 2023-11-17
+
+ This python script initialise the distribution function that
+ will be read by GYSELA
+
+@author: P. Donnel & V. Grandgirard
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py
-import utils as ut
+import h5py as h5
+import time
+import xarray as xr
+import yaml
 
-########### TEMPORARY: will be changed to use YAML file ######
-### The grid ###
-Ntor1 = 64      # number of cells in the radial direction
-Ntor2 = 128     # number of cells in the poloidal direction
-Ntor3 = 4       # number of cells in the toroidal direction
-Nvpar = 32      # number of cells in the parallel velocity direction
-Nmu   = 16      # number of cells in the adiabatic invariant direction
-Nspecies = 1    # number of species
+from argparse import ArgumentParser
+from pathlib import Path
+from yaml.loader import SafeLoader
 
-tor1_min = 0.0
-tor1_max = 1.0
-tor2_min = 0.0
-tor2_max = 2*np.pi
-tor3_min = 0.0
-tor3_max = 2*np.pi
-vpar_max = 5.0
-mu_max   = 12.0
+import utils.function_utils as fut
+import utils.plot_utils as put
+import utils.math_utils as mut
 
+if __name__ == '__main__':
+    parser = ArgumentParser(description="Initialisation of the distribution function for GyselaX")
+    parser.add_argument('-i','--input_file',
+                        action='store',
+                        nargs='?',
+                        default=Path('input_mesh_ref.yaml'),
+                        type=Path,
+                        help='input file (YAML format)')
+    parser.add_argument('-o','--output_file',
+                        action='store',
+                        nargs='?',
+                        default=Path('GyselaX_fdistribu_rst00000.nc'),
+                        type=Path,
+                        help='output file')
+    args = parser.parse_args()
 
-grid_tor1 = np.linspace( tor1_min, tor1_max, Ntor1 )
-grid_tor2 = np.linspace( tor2_min, tor2_max, Ntor2, endpoint = False )
-grid_tor3 = np.linspace( tor3_min, tor3_max, Ntor3, endpoint = False )
-grid_vpar = np.linspace( -vpar_max, vpar_max, Nvpar )
-grid_mu   = np.linspace( 0.0, mu_max, Nmu )
+    start = time.time()
 
-#VG#grid_grev_tor1 = ut.get_greville_points(grid_tor1, periodic= False, spline_degree = 3)
-#VG#grid_grev_tor2 = ut.get_greville_points(grid_tor2, periodic= True, spline_degree = 3)
-#VG#print("grid_tor2=",grid_tor2)
-#VG#print("grid_grev_tor2=",grid_grev_tor2)
+    # Open the input YAML file and load the file
+    input_file = args.input_file
+    input_filename = input_file.name
+    print('Input file={}'.format(input_filename))
+    output_file = args.output_file
 
-# Save the distribution function in an hdf5 file
-hf_grid = h5py.File('GyselaX_mesh.h5', 'w')
+    with open(input_file) as f:
+        d_params = yaml.load(f, Loader=SafeLoader)
+    print(d_params)
 
-hf_grid.create_dataset('grid_tor1', data=grid_tor1)
-hf_grid.create_dataset('grid_tor2', data=grid_tor2)
-hf_grid.create_dataset('grid_tor3', data=grid_tor3)
-hf_grid.create_dataset('grid_vpar', data=grid_vpar)
-hf_grid.create_dataset('grid_mu', data=grid_mu)
-
-hf_grid.close()
-
-
-# species caracteristics (filled with dummy values now)
-As = np.ones(Nspecies)
-Zs = np.ones(Nspecies)
-
-
-# Construct the density, mean parallel velocity and temperature profiles in 1D, assuming a parabolic radial dependance:
-N_vec    = np.zeros((Ntor1, Ntor2))
-Upar_vec = np.zeros((Ntor1, Ntor2))
-T_vec    = np.zeros((Ntor1, Ntor2))
-
-N_min = 0.5  #In normalized units, N_max=N_ref is on the axis
-T_min = 0.2  #In normalized units, T_max=T_ref is on the axis
+    ncell_tor1 = d_params['Mesh']['ncell_tor1']
+    ncell_tor2 = d_params['Mesh']['ncell_tor2']
+    ncell_tor3 = d_params['Mesh']['ncell_tor3']
+    ncell_vpar = d_params['Mesh']['ncell_vpar']
+    ncell_mu = d_params['Mesh']['ncell_mu']
+    nspecies = d_params['Mesh']['nspecies']
     
-for ir in range(Ntor1):
-    N_vec[ir, :] = 1.0  - (1.0 - N_min) * grid_tor1[ir]**2
-    T_vec[ir, :] = 1.0  - (1.0 - T_min) * grid_tor1[ir]**2
+    min_tor1 = d_params['Mesh']['min_tor1']
+    max_tor1 = d_params['Mesh']['max_tor1']
+    min_tor2 = d_params['Mesh']['min_tor2']
+    max_tor2 = d_params['Mesh']['max_tor2']
+    min_tor3 = d_params['Mesh']['min_tor3']
+    max_tor3 = d_params['Mesh']['max_tor3']
+    max_vpar = d_params['Mesh']['max_vpar']
+    max_mu = d_params['Mesh']['max_mu']
 
+    grid_tor1 = np.linspace( min_tor1, max_tor1, ncell_tor1 )
+    grid_tor2 = np.linspace( min_tor2, max_tor2, ncell_tor2, endpoint = False )
+    grid_tor3 = np.linspace( min_tor3, max_tor3, ncell_tor3, endpoint = False )
+    grid_vpar = np.linspace( -max_vpar, max_vpar, ncell_vpar )
+    grid_mu   = np.linspace( 0.0, max_mu, ncell_mu )
 
-# Save the distribution function in an hdf5 file
-hf_prof = h5py.File('GyselaX_profiles.h5', 'w')
+#VG##VG#grid_grev_tor1 = mut.get_greville_points(grid_tor1, periodic= False, spline_degree = 3)
+#VG##VG#grid_grev_tor2 = mut.get_greville_points(grid_tor2, periodic= True, spline_degree = 3)
+#VG##VG#print("grid_tor2=",grid_tor2)
+#VG##VG#print("grid_grev_tor2=",grid_grev_tor2)
 
-hf_prof.create_dataset('densityTorCS', data=N_vec)
-hf_prof.create_dataset('UparTorCS', data=Upar_vec)
-hf_prof.create_dataset('temperatureTorCS', data=T_vec)
+    # species caracteristics (filled with dummy values now)
+    Nspecies = len(d_params['SpeciesInfo'])
+    As = np.ones(Nspecies)
+    Zs = np.ones(Nspecies)
+    species = [];
+    for ispecies in range(Nspecies):
+      species.append(d_params['SpeciesInfo'][ispecies]['name'])
+      As[ispecies] = d_params['SpeciesInfo'][ispecies]['mass']
+      Zs[ispecies] = d_params['SpeciesInfo'][ispecies]['charge']
+  
+    # Construct the density, mean parallel velocity and temperature profiles in 1D, 
+    #  assuming a parabolic radial dependance:
+    N_vec    = np.zeros((ncell_tor1, ncell_tor2), dtype=float)
+    Upar_vec = np.zeros((ncell_tor1, ncell_tor2), dtype=float)
+    T_vec    = np.zeros((ncell_tor1, ncell_tor2), dtype=float)
 
-hf_prof.close()
-
-########### END OF TEMPORARY  ###############################
-
-# Construct a Maxellian distribution function
-def Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, B_loc, vpar_loc, mu_loc):
-
-#   Compute  Energy = (0.5 * (vpar_loc - Upar_loc)**2 + mu_loc * B_loc) / T_loc in a vectorize way
-    Energy = np.add.outer(0.5 * (vpar_loc - Upar_loc)**2,  mu_loc * B_loc) / T_loc
-
-    return N_loc * (As / (2.0 * np.pi * T_loc))**1.5 * np.exp( - Energy)
-
-
-# Construction of the 5D distribution function
-F_distribution_5D = np.zeros( (Ntor1, Ntor2, Ntor3) + (Nvpar, Nmu, Nspecies) )
-
-for ispecies in range(Nspecies):
-    As_loc = As[ispecies]
-    for ir in range(Ntor1):
-        for itheta in range(Ntor2):
-            N_loc    = N_vec[ir, itheta]
-            Upar_loc = Upar_vec[ir, itheta]
-            T_loc    = T_vec[ir, itheta]
-
-            Maxwellian_loc = Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
-
-            for iphi in range(Ntor3):
-
-                F_distribution_5D[ir, itheta, iphi, :, :, ispecies] = Maxwellian_loc
-
-# Save the distribution function in an hdf5 file
-time_saved = 0.
-hf_distri = h5py.File('GyselaX_fdistribu_rst00000.h5', 'w')
-hf_distri.create_dataset('time_saved', data=time_saved)
-hf_distri.create_dataset('fdistribu', data=F_distribution_5D)
-hf_distri.close()
-
-plotting = input("Do you want to plot the figures? [y/n] (default = n)")
-if plotting == "y":
+    N_min = 0.5  #In normalized units, N_max=N_ref is on the axis
+    T_min = 0.2  #In normalized units, T_max=T_ref is on the axis
     
-    
-    # Figure 0: Distribution function of first species on the magnetic axis
+    for ir in range(ncell_tor1):
+      N_vec[ir, :] = 1.0  - (1.0 - N_min) * grid_tor1[ir]**2
+      T_vec[ir, :] = 1.0  - (1.0 - T_min) * grid_tor1[ir]**2
 
-    Maxwellian_loc[:, :] = F_distribution_5D[ 0, 0, 0, :, :, 0]
+    # Construction of the 5D distribution function
+    F_distribution_5D = np.zeros( (ncell_tor1, ncell_tor2, 
+      ncell_tor3, ncell_vpar, ncell_mu, Nspecies), dtype=float )
 
-    fig0 = plt.figure(0,figsize=(10, 10))
-    ax0 = fig0.add_subplot(111)
-    ax0.pcolor(grid_vpar,grid_mu,np.transpose(Maxwellian_loc))
-    ax0.set_xlabel("$v_{\parallel}$")
-    ax0.set_ylabel("$\mu$")
- 
+    for ispecies in range(Nspecies):
+      As_loc = As[ispecies]
+      for ir in range(ncell_tor1):
+          for itheta in range(ncell_tor2):
+              N_loc    = N_vec[ir, itheta]
+              Upar_loc = Upar_vec[ir, itheta]
+              T_loc    = T_vec[ir, itheta]
 
-    # Figure 1: Profiles
-    fig1 = plt.figure(1,figsize=(10, 10))
+              Maxwellian_loc = fut.Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
 
-    ax11 = fig1.add_subplot(311)
-    ax11.plot(grid_tor1, N_vec[:, 0])
-    ax11.set_ylabel("$N_e / N_e^{ref}$", fontsize = 20)
+              for iphi in range(ncell_tor3):
+                  F_distribution_5D[ir, itheta, iphi, :, :, ispecies] = Maxwellian_loc
 
-    ax12 = fig1.add_subplot(312)
-    ax12.plot(grid_tor1, Upar_vec[:,0])
-    ax12.set_ylabel("$U_{\parallel, e} / v_{Te}^{ref}$", fontsize = 20)
+    # Create the associated xarray
+    ds_gysela = xr.Dataset(
+        data_vars=dict(
+        grid_tor1=(['tor1'], grid_tor1),
+        grid_tor2=(['tor2'], grid_tor2),
+        grid_tor3=(['tor3'], grid_tor3),
+        grid_vpar=(['vpar'], grid_vpar),
+        grid_mu=(['mu'], grid_mu),
+        densityTorCS=(['tor1','tor2'], N_vec),
+        UparTorCS=(['tor1','tor2'], Upar_vec),
+        temperatureTorCS=(['tor1','tor2'], T_vec),
+        fdistribu=(['tor1', 'tor2', 'tor3', 'vpar', 'mu', 'species'], F_distribution_5D )
+        ),
+        coords=dict(
+          tor1=grid_tor1,
+          tor2=grid_tor2,
+          tor3=grid_tor3,
+          vpar=grid_vpar,
+          mu=grid_mu,
+          species=species,
+        ),
+        attrs=dict(description="Mesh and initial profiles of GyselaX"),
+    )
 
-    ax13 = fig1.add_subplot(313)
-    ax13.plot(grid_tor1, T_vec[:,0])
-    ax13.set_ylabel("$T_e / T_e^{ref}$", fontsize = 20)
+    if output_file.suffix == '.nc':
+      #--> Saving in NetCDF file 
+      print('--> Save NetCDF file {}'.format(output_file.name))
+      ds_gysela.to_netcdf( path=output_file, mode='w', engine='h5netcdf' );
+      ds_gysela.close();
+    elif output_file.suffix == '.h5':
+      #--> Saving in HDF5 files
+      with h5.File(output_file.name, 'w') as h5file:
+        h5file.create_dataset('grid_tor1', data=grid_tor1)
+        h5file.create_dataset('grid_tor2', data=grid_tor2)
+        h5file.create_dataset('grid_tor3', data=grid_tor3)
+        h5file.create_dataset('grid_vpar', data=grid_vpar)
+        h5file.create_dataset('grid_mu', data=grid_mu)
+        h5file.create_dataset('species', data=species)
+        h5file.create_dataset('densityTorCS', data=N_vec)
+        h5file.create_dataset('UparTorCS', data=Upar_vec)
+        h5file.create_dataset('temperatureTorCS', data=T_vec)
+        h5file.create_dataset('fdistribu', data=F_distribution_5D)
 
-    plt.show()
+    itor1 = 0;
+    itor2 = 0;
+    itor3 = 0;
+    put.plot_field2d(ds_gysela.fdistribu.sel(species='ion').isel(tor1=itor1,tor2=itor2,tor3=itor3),
+        titlename="", figure_name='fdistribu_vparmu')
+    fut.plot_profiles( ds_gysela, figure_name="profiles") 
+    end = time.time()
+    print('The time of execution of above program is : {} s'.format(end-start))
+
+

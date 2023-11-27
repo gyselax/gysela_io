@@ -1,0 +1,9 @@
+numpy
+matplotlib
+h5netcdf
+h5py
+imageio
+ipython
+pyyaml
+xarray
+
