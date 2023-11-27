@@ -29,15 +29,15 @@ if __name__ == '__main__':
     parser.add_argument('-i','--input_file',
                         action='store',
                         nargs='?',
-                        default=Path('input_mesh_ref.yaml'),
+                        default=Path('input_params_ref.yaml'),
                         type=Path,
-                        help='input file (YAML format)')
+                        help='input YAML file (default: input_params_ref.yaml)')
     parser.add_argument('-o','--output_file',
                         action='store',
                         nargs='?',
-                        default=Path('GyselaX_fdistribu_rst00000.nc'),
+                        default=Path('GyselaX_restart_00000.nc'),
                         type=Path,
-                        help='output file')
+                        help='output NetCDF or HDF5 file (default: GyselaX_restart_00000.nc)')
     args = parser.parse_args()
 
     start = time.time()
@@ -57,7 +57,6 @@ if __name__ == '__main__':
     ncell_tor3 = d_params['Mesh']['ncell_tor3']
     ncell_vpar = d_params['Mesh']['ncell_vpar']
     ncell_mu = d_params['Mesh']['ncell_mu']
-    nspecies = d_params['Mesh']['nspecies']
     
     min_tor1 = d_params['Mesh']['min_tor1']
     max_tor1 = d_params['Mesh']['max_tor1']
@@ -80,11 +79,11 @@ if __name__ == '__main__':
 #VG##VG#print("grid_grev_tor2=",grid_grev_tor2)
 
     # species caracteristics (filled with dummy values now)
-    Nspecies = len(d_params['SpeciesInfo'])
-    As = np.ones(Nspecies)
-    Zs = np.ones(Nspecies)
+    nspecies = len(d_params['SpeciesInfo'])
+    As = np.ones(nspecies)
+    Zs = np.ones(nspecies)
     species = [];
-    for ispecies in range(Nspecies):
+    for ispecies in range(nspecies):
       species.append(d_params['SpeciesInfo'][ispecies]['name'])
       As[ispecies] = d_params['SpeciesInfo'][ispecies]['mass']
       Zs[ispecies] = d_params['SpeciesInfo'][ispecies]['charge']
@@ -104,9 +103,9 @@ if __name__ == '__main__':
 
     # Construction of the 5D distribution function
     F_distribution_5D = np.zeros( (ncell_tor1, ncell_tor2, 
-      ncell_tor3, ncell_vpar, ncell_mu, Nspecies), dtype=float )
+      ncell_tor3, ncell_vpar, ncell_mu, nspecies), dtype=float )
 
-    for ispecies in range(Nspecies):
+    for ispecies in range(nspecies):
       As_loc = As[ispecies]
       for ir in range(ncell_tor1):
           for itheta in range(ncell_tor2):
@@ -130,6 +129,8 @@ if __name__ == '__main__':
         densityTorCS=(['tor1','tor2'], N_vec),
         UparTorCS=(['tor1','tor2'], Upar_vec),
         temperatureTorCS=(['tor1','tor2'], T_vec),
+        mass=(['species'], As),
+        charge=(['species'], Zs),
         fdistribu=(['tor1', 'tor2', 'tor3', 'vpar', 'mu', 'species'], F_distribution_5D )
         ),
         coords=dict(
@@ -150,6 +151,7 @@ if __name__ == '__main__':
       ds_gysela.close();
     elif output_file.suffix == '.h5':
       #--> Saving in HDF5 files
+      print('--> Save HDF5 file {}'.format(output_file.name))
       with h5.File(output_file.name, 'w') as h5file:
         h5file.create_dataset('grid_tor1', data=grid_tor1)
         h5file.create_dataset('grid_tor2', data=grid_tor2)
@@ -157,18 +159,13 @@ if __name__ == '__main__':
         h5file.create_dataset('grid_vpar', data=grid_vpar)
         h5file.create_dataset('grid_mu', data=grid_mu)
         h5file.create_dataset('species', data=species)
+        h5file.create_dataset('charge', data=As)
+        h5file.create_dataset('mass', data=Zs)
         h5file.create_dataset('densityTorCS', data=N_vec)
         h5file.create_dataset('UparTorCS', data=Upar_vec)
         h5file.create_dataset('temperatureTorCS', data=T_vec)
         h5file.create_dataset('fdistribu', data=F_distribution_5D)
 
-    itor1 = 0;
-    itor2 = 0;
-    itor3 = 0;
-    put.plot_field2d(ds_gysela.fdistribu.sel(species='ion').isel(tor1=itor1,tor2=itor2,tor3=itor3),
-        titlename="", figure_name='fdistribu_vparmu')
-    fut.plot_profiles( ds_gysela, figure_name="profiles") 
     end = time.time()
     print('The time of execution of above program is : {} s'.format(end-start))
-
 

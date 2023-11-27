@@ -27,7 +27,7 @@ if __name__ == '__main__':
     parser.add_argument('-i','--input_file',
                         action='store',
                         nargs='?',
-                        default=Path('GyselaX_fdistribu_rst00000.nc'),
+                        default=Path('GyselaX_restart_00000.nc'),
                         type=Path,
                         required=False,
                         help='NetCDF or HDF5 file containing the distribution function')
