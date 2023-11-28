@@ -22,6 +22,8 @@ from argparse import ArgumentParser
 from pathlib import Path
 from yaml.loader import SafeLoader
 
+import utils.function_utils as fut
+
 if __name__ == '__main__':
     parser = ArgumentParser(description="Extract slice from 5D distribution function")
     parser.add_argument('-i','--input_file',
@@ -57,28 +59,7 @@ if __name__ == '__main__':
     if input_file.suffix == '.nc':
       ds_gysela = xr.open_dataset(input_file)
     elif input_file.suffix == '.h5':
-      with h5py.File(input_file, "r") as h5f:
-        if 'species_name' in h5f.keys():
-          species_name = h5f['species_name'][()]
-          for i in range(0,len(species_name)):
-            species_name[i]=species_name[i].decode('utf-8')
-        ds_gysela = xr.Dataset(
-            data_vars=dict(
-            densityTorCS=(['tor2','tor1'], h5f['densityTorCS'][()]),
-            UparTorCS=(['tor2','tor1'], h5f['UparTorCS'][()]),
-            temperatureTorCS=(['tor2','tor1'], h5f['temperatureTorCS'][()]),
-            fdistribu=(['species', 'tor3', 'tor2', 'tor1', 'vpar', 'mu'], h5f['fdistribu'][()] )
-            ),
-            coords=dict(
-              tor1=h5f['grid_tor1'][()],
-              tor2=h5f['grid_tor2'][()],
-              tor3=h5f['grid_tor3'][()],
-              vpar=h5f['grid_vpar'][()],
-              mu=h5f['grid_mu'][()],
-              species=h5f['species'][()],
-            ),
-            attrs=dict(description="Mesh and initial profiles of GyselaX"),
-        )
+      ds_gysela = fut.create_Xarray_from_hdf5_restartfile( hdf5_restart_file )
     
     list_select_OK = []
     str_select_OK = ''
@@ -86,6 +67,7 @@ if __name__ == '__main__':
       if i.split('=')[0] in ds_gysela[dataset_name].coords:
         list_select_OK.append(i)
         str_select_OK = str_select_OK+'_i'+str(i).replace('=','eq')
+    str_select_OK = str_select_OK.replace('species','sp')
 
     dict_select = {key: int(value) for key, value in (pair.split('=') for pair in list_select_OK)}
     ds_select = ds_gysela[dataset_name].isel(dict_select)
