@@ -58,14 +58,15 @@ if __name__ == '__main__':
       ds_gysela = xr.open_dataset(input_file)
     elif input_file.suffix == '.h5':
       with h5py.File(input_file, "r") as h5f:
-        species_name = h5f['species_name'][()]
-        for i in range(0,len(species_name)):
-          species_name[i]=species_name[i].decode('utf-8')
+        if 'species_name' in h5f.keys():
+          species_name = h5f['species_name'][()]
+          for i in range(0,len(species_name)):
+            species_name[i]=species_name[i].decode('utf-8')
         ds_gysela = xr.Dataset(
             data_vars=dict(
-            densityTorCS=(['tor1','tor2'], h5f['densityTorCS'][()]),
-            UparTorCS=(['tor1','tor2'], h5f['UparTorCS'][()]),
-            temperatureTorCS=(['tor1','tor2'], h5f['temperatureTorCS'][()]),
+            densityTorCS=(['tor2','tor1'], h5f['densityTorCS'][()]),
+            UparTorCS=(['tor2','tor1'], h5f['UparTorCS'][()]),
+            temperatureTorCS=(['tor2','tor1'], h5f['temperatureTorCS'][()]),
             fdistribu=(['species', 'tor3', 'tor2', 'tor1', 'vpar', 'mu'], h5f['fdistribu'][()] )
             ),
             coords=dict(
