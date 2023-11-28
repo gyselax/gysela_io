@@ -46,8 +46,16 @@ if __name__ == '__main__':
                         default='tor1=0,tor2=0,tor3=0,species=0',
                         type=str,
                         help="Position of the slice to extract, by default 'tor1=0,tor2=0,tor3=0,species=0'")
+    parser.add_argument('-o','--output',
+                        action='store',
+                        nargs='?',
+                        default=None,
+                        type=str,
+                        help='output PNG filename for the plot')
+
     args = parser.parse_args()
 
+    # Read the input file
     input_file = args.input_file
     dataset_name = args.dataset
     str_select = args.select.replace(" ","")
@@ -56,6 +64,7 @@ if __name__ == '__main__':
       os.system('h5ls {}'.format(input_file))
       sys.exit()
 
+    # Create the Xarray
     ds_gysela = fut.create_Xarray_from_hdf5_restartfile( input_file )
     
     list_select_OK = []
@@ -64,11 +73,21 @@ if __name__ == '__main__':
       if i.split('=')[0] in ds_gysela[dataset_name].coords:
         list_select_OK.append(i)
         str_select_OK = str_select_OK+'_i'+str(i).replace('=','eq')
-    str_select_OK = str_select_OK.replace('species','sp')
 
     dict_select = {key: int(value) for key, value in (pair.split('=') for pair in list_select_OK)}
     ds_select = ds_gysela[dataset_name].isel(dict_select)
     nb_dim_select = len(ds_select.dims)
+    str_dim_select = ''
+    for idim in ds_select.dims:
+      str_dim_select = str_dim_select + '_' + idim
+
+    # Read the output file name
+    if args.output is None:
+      figname = '{}{}{}.png'.format(dataset_name,str_dim_select,str_select_OK)
+      figname = figname.replace('species','sp')
+      figname = figname.replace('fdistribu','f')
+    else:
+      figname = args.output
 
     print(ds_select)
     if nb_dim_select==0 or nb_dim_select>2:
@@ -76,6 +95,5 @@ if __name__ == '__main__':
     else:
       ax = plt.axes()
       ds_select.plot()
-      figname = '{}_{}D{}.png'.format(dataset_name,nb_dim_select,str_select_OK)
       print('--> Figure saved in: {}'.format(figname))
       plt.savefig(figname)
