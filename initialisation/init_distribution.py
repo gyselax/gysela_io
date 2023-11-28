@@ -52,6 +52,7 @@ if __name__ == '__main__':
         d_params = yaml.load(f, Loader=SafeLoader)
     print(d_params)
 
+    time_saved = 0.
     ncell_tor1 = d_params['Mesh']['ncell_tor1']
     ncell_tor2 = d_params['Mesh']['ncell_tor2']
     ncell_tor3 = d_params['Mesh']['ncell_tor3']
@@ -82,12 +83,13 @@ if __name__ == '__main__':
     nspecies = len(d_params['SpeciesInfo'])
     As = np.ones(nspecies)
     Zs = np.ones(nspecies)
-    species = [];
-    for ispecies in range(nspecies):
-      species.append(d_params['SpeciesInfo'][ispecies]['name'])
-      As[ispecies] = d_params['SpeciesInfo'][ispecies]['mass']
-      Zs[ispecies] = d_params['SpeciesInfo'][ispecies]['charge']
-  
+    species_name = [];
+    ispecies = np.arange(nspecies);
+    for ispec in range(nspecies):
+      species_name.append(d_params['SpeciesInfo'][ispec]['name'])
+      As[ispec] = d_params['SpeciesInfo'][ispec]['mass']
+      Zs[ispec] = d_params['SpeciesInfo'][ispec]['charge']
+
     # Construct the density, mean parallel velocity and temperature profiles in 1D, 
     #  assuming a parabolic radial dependance:
     N_vec    = np.zeros((ncell_tor1, ncell_tor2), dtype=float)
@@ -102,11 +104,11 @@ if __name__ == '__main__':
       T_vec[ir, :] = 1.0  - (1.0 - T_min) * grid_tor1[ir]**2
 
     # Construction of the 5D distribution function
-    F_distribution_5D = np.zeros( (ncell_tor1, ncell_tor2, 
-      ncell_tor3, ncell_vpar, ncell_mu, nspecies), dtype=float )
+    F_distribution_5D = np.zeros( (nspecies, ncell_tor3, ncell_tor2, 
+      ncell_tor1, ncell_vpar, ncell_mu), dtype=float )
 
-    for ispecies in range(nspecies):
-      As_loc = As[ispecies]
+    for ispec in range(nspecies):
+      As_loc = As[ispec]
       for ir in range(ncell_tor1):
           for itheta in range(ncell_tor2):
               N_loc    = N_vec[ir, itheta]
@@ -116,7 +118,7 @@ if __name__ == '__main__':
               Maxwellian_loc = fut.Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
 
               for iphi in range(ncell_tor3):
-                  F_distribution_5D[ir, itheta, iphi, :, :, ispecies] = Maxwellian_loc
+                  F_distribution_5D[ispec, iphi, itheta, ir, :, :] = Maxwellian_loc
 
     # Create the associated xarray
     ds_gysela = xr.Dataset(
@@ -126,12 +128,13 @@ if __name__ == '__main__':
         grid_tor3=(['tor3'], grid_tor3),
         grid_vpar=(['vpar'], grid_vpar),
         grid_mu=(['mu'], grid_mu),
-        densityTorCS=(['tor1','tor2'], N_vec),
-        UparTorCS=(['tor1','tor2'], Upar_vec),
-        temperatureTorCS=(['tor1','tor2'], T_vec),
-        mass=(['species'], As),
-        charge=(['species'], Zs),
-        fdistribu=(['tor1', 'tor2', 'tor3', 'vpar', 'mu', 'species'], F_distribution_5D )
+        densityTorCS=(['tor1', 'tor2'], N_vec),
+        UparTorCS=(['tor1', 'tor2'], Upar_vec),
+        temperatureTorCS=(['tor1', 'tor2'], T_vec),
+        species_name=(['species'], species_name),
+        masses=(['species'], As),
+        charges=(['species'], Zs),
+        fdistribu=(['species', 'tor3', 'tor2', 'tor1', 'vpar', 'mu'], F_distribution_5D )
         ),
         coords=dict(
           tor1=grid_tor1,
@@ -139,7 +142,8 @@ if __name__ == '__main__':
           tor3=grid_tor3,
           vpar=grid_vpar,
           mu=grid_mu,
-          species=species,
+          species=ispecies,
+          time_saved=time_saved
         ),
         attrs=dict(description="Mesh and initial profiles of GyselaX"),
     )
@@ -158,9 +162,11 @@ if __name__ == '__main__':
         h5file.create_dataset('grid_tor3', data=grid_tor3)
         h5file.create_dataset('grid_vpar', data=grid_vpar)
         h5file.create_dataset('grid_mu', data=grid_mu)
-        h5file.create_dataset('species', data=species)
-        h5file.create_dataset('charge', data=As)
-        h5file.create_dataset('mass', data=Zs)
+        h5file.create_dataset('species', data=ispecies)
+        h5file.create_dataset('charges', data=As)
+        h5file.create_dataset('masses', data=Zs)
+        h5file.create_dataset('species_name', data=species_name)
+        h5file.create_dataset('time_saved', data=time_saved)
         h5file.create_dataset('densityTorCS', data=N_vec)
         h5file.create_dataset('UparTorCS', data=Upar_vec)
         h5file.create_dataset('temperatureTorCS', data=T_vec)
