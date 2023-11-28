@@ -56,10 +56,7 @@ if __name__ == '__main__':
       os.system('h5ls {}'.format(input_file))
       sys.exit()
 
-    if input_file.suffix == '.nc':
-      ds_gysela = xr.open_dataset(input_file)
-    elif input_file.suffix == '.h5':
-      ds_gysela = fut.create_Xarray_from_hdf5_restartfile( hdf5_restart_file )
+    ds_gysela = fut.create_Xarray_from_hdf5_restartfile( input_file )
     
     list_select_OK = []
     str_select_OK = ''
