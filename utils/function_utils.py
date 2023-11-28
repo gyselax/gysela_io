@@ -1,4 +1,4 @@
-import h5py as h5
+import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
@@ -47,27 +47,30 @@ def create_Xarray_from_hdf5_restartfile( hdf5_restart_file ):
   Create an Xarray from the reading of an HDF5 GyselaX restart file
   """
 
-  with h5py.File(hdf5_restart_file, "r") as h5f:
-    if 'species_name' in h5f.keys():
-      species_name = h5f['species_name'][()]
-      for i in range(0,len(species_name)):
-        species_name[i]=species_name[i].decode('utf-8')
-    ds_gysela = xr.Dataset(
-        data_vars=dict(
-        densityTorCS=(['tor2','tor1'], h5f['densityTorCS'][()]),
-        UparTorCS=(['tor2','tor1'], h5f['UparTorCS'][()]),
-        temperatureTorCS=(['tor2','tor1'], h5f['temperatureTorCS'][()]),
-        fdistribu=(['species', 'tor3', 'tor2', 'tor1', 'vpar', 'mu'], h5f['fdistribu'][()] )
-        ),
-        coords=dict(
-          tor1=h5f['grid_tor1'][()],
-          tor2=h5f['grid_tor2'][()],
-          tor3=h5f['grid_tor3'][()],
-          vpar=h5f['grid_vpar'][()],
-          mu=h5f['grid_mu'][()],
-          species=h5f['species'][()],
-        ),
-        attrs=dict(description="Mesh and initial profiles of GyselaX"),
-    )
+  if hdf5_restart_file.suffix == '.nc':
+    ds_gysela = xr.open_dataset(hdf5_restart_file)
+  elif hdf5_restart_file.suffix == '.h5':
+    with h5py.File(hdf5_restart_file, "r") as h5f:
+      if 'species_name' in h5f.keys():
+        species_name = h5f['species_name'][()]
+        for i in range(0,len(species_name)):
+          species_name[i]=species_name[i].decode('utf-8')
+      ds_gysela = xr.Dataset(
+          data_vars=dict(
+          densityTorCS=(['tor2','tor1'], h5f['densityTorCS'][()]),
+          UparTorCS=(['tor2','tor1'], h5f['UparTorCS'][()]),
+          temperatureTorCS=(['tor2','tor1'], h5f['temperatureTorCS'][()]),
+          fdistribu=(['species', 'tor3', 'tor2', 'tor1', 'vpar', 'mu'], h5f['fdistribu'][()] )
+          ),
+          coords=dict(
+            tor1=h5f['grid_tor1'][()],
+            tor2=h5f['grid_tor2'][()],
+            tor3=h5f['grid_tor3'][()],
+            vpar=h5f['grid_vpar'][()],
+            mu=h5f['grid_mu'][()],
+            species=h5f['species'][()],
+          ),
+          attrs=dict(description="Mesh and initial profiles of GyselaX"),
+      )
 
   return ds_gysela
