@@ -92,16 +92,16 @@ if __name__ == '__main__':
 
     # Construct the density, mean parallel velocity and temperature profiles in 1D, 
     #  assuming a parabolic radial dependance:
-    N_vec    = np.zeros((ncell_tor1, ncell_tor2), dtype=float)
-    Upar_vec = np.zeros((ncell_tor1, ncell_tor2), dtype=float)
-    T_vec    = np.zeros((ncell_tor1, ncell_tor2), dtype=float)
+    N_vec    = np.zeros((ncell_tor2, ncell_tor1), dtype=float)
+    Upar_vec = np.zeros((ncell_tor2, ncell_tor1), dtype=float)
+    T_vec    = np.zeros((ncell_tor2, ncell_tor1), dtype=float)
 
     N_min = 0.5  #In normalized units, N_max=N_ref is on the axis
     T_min = 0.2  #In normalized units, T_max=T_ref is on the axis
     
     for ir in range(ncell_tor1):
-      N_vec[ir, :] = 1.0  - (1.0 - N_min) * grid_tor1[ir]**2
-      T_vec[ir, :] = 1.0  - (1.0 - T_min) * grid_tor1[ir]**2
+      N_vec[:, ir] = 1.0  - (1.0 - N_min) * grid_tor1[ir]**2
+      T_vec[:, ir] = 1.0  - (1.0 - T_min) * grid_tor1[ir]**2
 
     # Construction of the 5D distribution function
     F_distribution_5D = np.zeros( (nspecies, ncell_tor3, ncell_tor2, 
@@ -111,9 +111,9 @@ if __name__ == '__main__':
       As_loc = As[ispec]
       for ir in range(ncell_tor1):
           for itheta in range(ncell_tor2):
-              N_loc    = N_vec[ir, itheta]
-              Upar_loc = Upar_vec[ir, itheta]
-              T_loc    = T_vec[ir, itheta]
+              N_loc    = N_vec[itheta, ir]
+              Upar_loc = Upar_vec[itheta, ir]
+              T_loc    = T_vec[itheta, ir]
 
               Maxwellian_loc = fut.Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
 
@@ -128,9 +128,9 @@ if __name__ == '__main__':
         grid_tor3=(['tor3'], grid_tor3),
         grid_vpar=(['vpar'], grid_vpar),
         grid_mu=(['mu'], grid_mu),
-        densityTorCS=(['tor1', 'tor2'], N_vec),
-        UparTorCS=(['tor1', 'tor2'], Upar_vec),
-        temperatureTorCS=(['tor1', 'tor2'], T_vec),
+        densityTorCS=(['tor2', 'tor1'], N_vec),
+        UparTorCS=(['tor2', 'tor1'], Upar_vec),
+        temperatureTorCS=(['tor2', 'tor1'], T_vec),
         species_name=(['species'], species_name),
         masses=(['species'], As),
         charges=(['species'], Zs),
