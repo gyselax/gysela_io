@@ -58,15 +58,15 @@ if __name__ == '__main__':
       ds_gysela = xr.open_dataset(input_file)
     elif input_file.suffix == '.h5':
       with h5py.File(input_file, "r") as h5f:
-        species = h5f['species'][()]
-        for i in range(0,len(species)):
-          species[i]=species[i].decode('utf-8')
+        species_name = h5f['species_name'][()]
+        for i in range(0,len(species_name)):
+          species_name[i]=species_name[i].decode('utf-8')
         ds_gysela = xr.Dataset(
             data_vars=dict(
             densityTorCS=(['tor1','tor2'], h5f['densityTorCS'][()]),
             UparTorCS=(['tor1','tor2'], h5f['UparTorCS'][()]),
             temperatureTorCS=(['tor1','tor2'], h5f['temperatureTorCS'][()]),
-            fdistribu=(['tor1', 'tor2', 'tor3', 'vpar', 'mu', 'species'], h5f['fdistribu'][()] )
+            fdistribu=(['species', 'tor3', 'tor2', 'tor1', 'vpar', 'mu'], h5f['fdistribu'][()] )
             ),
             coords=dict(
               tor1=h5f['grid_tor1'][()],
@@ -74,7 +74,7 @@ if __name__ == '__main__':
               tor3=h5f['grid_tor3'][()],
               vpar=h5f['grid_vpar'][()],
               mu=h5f['grid_mu'][()],
-              species=species,
+              species=h5f['species'][()],
             ),
             attrs=dict(description="Mesh and initial profiles of GyselaX"),
         )
