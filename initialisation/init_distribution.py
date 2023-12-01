@@ -20,6 +20,21 @@ from argparse import ArgumentParser
 from pathlib import Path
 from yaml.loader import SafeLoader
 
+import sys
+import os
+
+# getting the name of the directory
+# where the this file is present.
+current = os.path.dirname(os.path.realpath(__file__))
+
+# Getting the parent directory name
+# where the current directory is present.
+parent = os.path.dirname(current)
+
+# adding the parent directory to
+# the sys.path.
+sys.path.append(parent)
+
 import utils.function_utils as fut
 import utils.plot_utils as put
 import utils.math_utils as mut
@@ -100,8 +115,8 @@ if __name__ == '__main__':
     T_min = 0.2  #In normalized units, T_max=T_ref is on the axis
     
     for ir in range(ncell_tor1):
-      N_vec[:, ir] = 1.0  - (1.0 - N_min) * grid_tor1[ir]**2
-      T_vec[:, ir] = 1.0  - (1.0 - T_min) * grid_tor1[ir]**2
+      N_vec[:, ir] = fut.parabolic_prof( 1.0, N_min, grid_tor1[ir] )
+      T_vec[:, ir] = fut.parabolic_prof( 1.0, T_min, grid_tor1[ir] )
 
     # Construction of the 5D distribution function
     F_distribution_5D = np.zeros( (nspecies, ncell_tor3, ncell_tor2, 

@@ -4,7 +4,12 @@ import numpy as np
 import xarray as xr
 
 
-# Construct a Maxellian distribution function
+# Construct a parabolic profile
+def parabolic_prof( val_0, val_a, radius):
+
+    return val_0 + (val_a - val_0) * radius**2
+
+# Construct a Maxwellian distribution function
 def Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, B_loc, vpar_loc, mu_loc):
     """
     Construct a Maxellian distribution function
