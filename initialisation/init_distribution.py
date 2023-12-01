@@ -98,25 +98,26 @@ if __name__ == '__main__':
     nspecies = len(d_params['SpeciesInfo'])
     As = np.ones(nspecies)
     Zs = np.ones(nspecies)
+    Ns_min = np.ones(nspecies)
+    Ts_min = np.ones(nspecies)
     species_name = [];
     ispecies = np.arange(nspecies);
     for ispec in range(nspecies):
       species_name.append(d_params['SpeciesInfo'][ispec]['name'])
       As[ispec] = d_params['SpeciesInfo'][ispec]['mass']
       Zs[ispec] = d_params['SpeciesInfo'][ispec]['charge']
+      Ns_min[ispec] = d_params['SpeciesInfo'][ispec]['N_min']
+      Ts_min[ispec] = d_params['SpeciesInfo'][ispec]['T_min']
 
     # Construct the density, mean parallel velocity and temperature profiles in 1D, 
-    #  assuming a parabolic radial dependance:
-    N_vec    = np.zeros((ncell_tor2, ncell_tor1), dtype=float)
-    Upar_vec = np.zeros((ncell_tor2, ncell_tor1), dtype=float)
-    T_vec    = np.zeros((ncell_tor2, ncell_tor1), dtype=float)
+    N_vec    = np.zeros((nspecies, ncell_tor2, ncell_tor1), dtype=float)
+    Upar_vec = np.zeros((nspecies, ncell_tor2, ncell_tor1), dtype=float)
+    T_vec    = np.zeros((nspecies, ncell_tor2, ncell_tor1), dtype=float)
 
-    N_min = 0.5  #In normalized units, N_max=N_ref is on the axis
-    T_min = 0.2  #In normalized units, T_max=T_ref is on the axis
-    
-    for ir in range(ncell_tor1):
-      N_vec[:, ir] = fut.parabolic_prof( 1.0, N_min, grid_tor1[ir] )
-      T_vec[:, ir] = fut.parabolic_prof( 1.0, T_min, grid_tor1[ir] )
+    for ispec in range(nspecies):    
+        for ir in range(ncell_tor1):
+            N_vec[ispec, :, ir] = fut.parabolic_prof( 1.0, Ns_min[ispec], grid_tor1[ir] )
+            T_vec[ispec, :, ir] = fut.parabolic_prof( 1.0, Ts_min[ispec], grid_tor1[ir] )
 
     # Construction of the 5D distribution function
     F_distribution_5D = np.zeros( (nspecies, ncell_tor3, ncell_tor2, 
@@ -126,9 +127,9 @@ if __name__ == '__main__':
       As_loc = As[ispec]
       for ir in range(ncell_tor1):
           for itheta in range(ncell_tor2):
-              N_loc    = N_vec[itheta, ir]
-              Upar_loc = Upar_vec[itheta, ir]
-              T_loc    = T_vec[itheta, ir]
+              N_loc    = N_vec[ispec, itheta, ir]
+              Upar_loc = Upar_vec[ispec, itheta, ir]
+              T_loc    = T_vec[ispec, itheta, ir]
 
               Maxwellian_loc = fut.Maxwellian_func( As_loc, N_loc, Upar_loc, T_loc, 1.0, grid_vpar, grid_mu)
 
@@ -143,9 +144,9 @@ if __name__ == '__main__':
         grid_tor3=(['tor3'], grid_tor3),
         grid_vpar=(['vpar'], grid_vpar),
         grid_mu=(['mu'], grid_mu),
-        densityTorCS=(['tor2', 'tor1'], N_vec),
-        UparTorCS=(['tor2', 'tor1'], Upar_vec),
-        temperatureTorCS=(['tor2', 'tor1'], T_vec),
+        densityTorCS=(['species','tor2', 'tor1'], N_vec),
+        UparTorCS=(['species','tor2', 'tor1'], Upar_vec),
+        temperatureTorCS=(['species','tor2', 'tor1'], T_vec),
         species_name=(['species'], species_name),
         masses=(['species'], As),
         charges=(['species'], Zs),
