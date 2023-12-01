@@ -94,6 +94,15 @@ if __name__ == '__main__':
 #VG##VG#print("grid_tor2=",grid_tor2)
 #VG##VG#print("grid_grev_tor2=",grid_grev_tor2)
 
+    # Geometry parameters
+    R0 = d_params['Geometry']['R0']   # major radius
+    a  = d_params['Geometry']['a']    # minor radius
+    Ea = d_params['Geometry']['Ea']   # E(a) for Culham equilibrium
+    Ta = d_params['Geometry']['Ta']   # T(a) for Culham equilibrium
+    q0 = d_params['Geometry']['q0']   # safety factor on the magnetic axis (parabolic profile)
+    qa = d_params['Geometry']['qa']   # safety factor at the edge (parabolic profile)
+
+
     # species caracteristics (filled with dummy values now)
     nspecies = len(d_params['SpeciesInfo'])
     As = np.ones(nspecies)
